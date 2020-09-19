@@ -8,11 +8,13 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import androidx.core.graphics.toColorInt
 import com.tenny.ssbutton.R
 import com.tenny.ssbutton.drawable.RoundRectangleDrawable
 import com.tenny.ssbutton.utils.dp2px
 import com.tenny.ssbutton.utils.goldDivider
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -20,31 +22,73 @@ import kotlin.math.max
  */
 class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, attrs) {
 
+    /**
+     * default value
+     */
     private val defaultTextSize = 16.dp2px
     private val defaultHeight = 42.dp2px.toInt()
     private val defaultWith = 200.dp2px.toInt()
     private var defaultIndex: Int = 0
-
-    private val baseTextGapSpace: Int
-
     private val defaultColor = "#F9A825".toColorInt()
 
+    /**
+     * configure value
+     */
     private var outerBoundsColor: Int
     private var innerBoundsColor: Int
     private var textSize: Float
     private var elementContent : List<String>
     private var elementCount: Int
 
+    /**
+     * GapSize
+     */
+    private val baseTextGapSpace: Int
+
+    /**
+     * measure size
+     */
     private var textOffsetX: FloatArray
     private var textOffsetY: Float = 0f
-
     private var elementWidth: Float = 0f
 
+    /**
+     * drawable element
+     */
     private val outDrawable = RoundRectangleDrawable()
     private val innerDrawable = RoundRectangleDrawable()
 
-    private var selectIndex: Int
+    /**
+     * select index
+     */
+    private var selectIndex: Int = 0
+        set(value) {
+            field = value
+            invalidate()
+        }
 
+    /**
+     * motion event
+     */
+    private var downX: Float = 0f
+    private var downY: Float = 0f
+
+    /**
+     * scrolling
+     */
+    private var isScrolling: Boolean = false
+
+    /**
+     * view configuration
+     */
+    private val viewConfiguration = ViewConfiguration.get(context)
+    private val pagingSlop = viewConfiguration.scaledPagingTouchSlop
+    private val minVelocity = viewConfiguration.scaledMinimumFlingVelocity
+    private val maxVelocity = viewConfiguration.scaledMaximumFlingVelocity
+
+    /**
+     * painting utils
+     */
     private val fontMetrics = Paint.FontMetrics()
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -113,11 +157,13 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
 
         outDrawable.setBounds(0, 0, w, h)
         innerDrawable.setBounds(elementWidth.toInt() * selectIndex, 0, elementWidth.toInt() * (selectIndex + 1), h)
-
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        outDrawable.setBounds(0, 0, width, height)
+        innerDrawable.setBounds(elementWidth.toInt() * selectIndex, 0, elementWidth.toInt() * (selectIndex + 1), height)
 
         drawDrawable(canvas)
         drawText(canvas)
@@ -151,9 +197,35 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when(event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
 
+                isScrolling = false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (!isScrolling) {
+                    val dx = event.x - downX
+                    if (abs(dx) > pagingSlop) {
+                        isScrolling = true
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_UP -> {
+                if (isScrolling) {
+
+                } else {
+                    selectIndex = getIndex(downX)
+                }
+            }
         }
-        return super.onTouchEvent(event)
+        return true
+    }
+
+    private fun getIndex(eventX: Float): Int {
+        return (eventX / elementWidth).toInt()
     }
 
 }
