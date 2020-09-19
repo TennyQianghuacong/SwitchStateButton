@@ -1,0 +1,2 @@
+# SwitchStateButton
+Multi state button
