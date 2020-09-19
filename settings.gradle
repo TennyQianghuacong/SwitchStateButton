@@ -1,0 +1,3 @@
+include ':ssbutton'
+include ':app'
+rootProject.name = "SwitchStateButton"
