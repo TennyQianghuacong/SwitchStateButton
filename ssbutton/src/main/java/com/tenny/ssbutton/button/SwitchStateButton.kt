@@ -13,6 +13,7 @@ import com.tenny.ssbutton.R
 import com.tenny.ssbutton.drawable.RoundRectangleDrawable
 import com.tenny.ssbutton.utils.dp2px
 import com.tenny.ssbutton.utils.goldDivider
+import kotlin.math.max
 
 /**
  * Created by TennyQ on 2020/9/19
@@ -22,6 +23,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private val defaultTextSize = 16.dp2px
     private val defaultHeight = 42.dp2px.toInt()
     private val defaultWith = 200.dp2px.toInt()
+    private var defaultIndex: Int = 0
 
     private val baseTextGapSpace: Int
 
@@ -32,17 +34,21 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private var textSize: Float
     private var elementContent : List<String>
     private var elementCount: Int
-    private var defaultIndex: Int
 
     private var textOffsetX: FloatArray
     private var textOffsetY: Float = 0f
 
+    private var elementWidth: Float = 0f
+
     private val outDrawable = RoundRectangleDrawable()
     private val innerDrawable = RoundRectangleDrawable()
+
+    private var selectIndex: Int
 
     private val fontMetrics = Paint.FontMetrics()
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
+        textAlign = Paint.Align.CENTER
     }
 
     init {
@@ -52,7 +58,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         innerBoundsColor = typeArray.getColor(R.styleable.SwitchStateButton_ssb_innerColor, defaultColor)
         textSize = typeArray.getDimension(R.styleable.SwitchStateButton_ssb_testSize, defaultTextSize)
         elementContent = typeArray.getString(R.styleable.SwitchStateButton_ssb_strings).toString().split(",")
-        defaultIndex = typeArray.getIndex(R.styleable.SwitchStateButton_ssb_defaultIndex)
+        selectIndex = typeArray.getInt(R.styleable.SwitchStateButton_ssb_selectIndex, defaultIndex)
         elementCount = elementContent.size
 
         typeArray.recycle()
@@ -71,21 +77,29 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     /**
-     * measure text size
+     * measure element's size and text's offset
      */
     private fun measureText() {
-        var height = baseTextGapSpace * 2 + textSize
-        var width = 0f
 
-        for ((index, text) in elementContent.withIndex()){
-            width += baseTextGapSpace
+        var maxTextWith = 0f
+        elementWidth = 0f
 
-            textOffsetX[index] = width
-            width += textPaint.measureText(text)
+        for (text in elementContent) {
+            maxTextWith = max(maxTextWith, textPaint.measureText(text))
+        }
 
-            width += baseTextGapSpace
+        elementWidth = maxTextWith + 2 * baseTextGapSpace
+
+        var startOffset = - elementWidth / 2f
+        for (index in elementContent.indices){
+            startOffset += elementWidth
+            textOffsetX[index] = startOffset
         }
         textPaint.getFontMetrics(fontMetrics)
+
+        val height = baseTextGapSpace * 2 + textSize
+        val width = elementWidth * elementContent.size
+
         textOffsetY = (height - (fontMetrics.ascent + fontMetrics.descent)) /2
 
         setMeasuredDimension(width.toInt(), height.toInt())
@@ -98,7 +112,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         super.onSizeChanged(w, h, oldw, oldh)
 
         outDrawable.setBounds(0, 0, w, h)
-        innerDrawable.setBounds(0, 0, w / 2, h)
+        innerDrawable.setBounds(elementWidth.toInt() * selectIndex, 0, elementWidth.toInt() * (selectIndex + 1), h)
 
     }
 

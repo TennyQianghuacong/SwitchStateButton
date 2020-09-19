@@ -6,7 +6,7 @@
         <attr name="ssb_testSize" format="dimension"/>
         <attr name="ssb_backGroundColor" format="color"/>
         <attr name="ssb_innerColor" format="color"/>
-        <attr name="ssb_defaultIndex" format="dimension"/>
+        <attr name="ssb_selectIndex" format="integer"/>
     </declare-styleable>
 
 </resources>
