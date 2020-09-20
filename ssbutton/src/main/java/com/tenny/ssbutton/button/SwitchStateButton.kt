@@ -1,16 +1,15 @@
 package com.tenny.ssbutton.button
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.core.graphics.toColorInt
@@ -20,6 +19,8 @@ import com.tenny.ssbutton.utils.dp2px
 import com.tenny.ssbutton.utils.goldDivider
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 /**
  * Created by TennyQ on 2020/9/19
@@ -41,7 +42,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private var outerBoundsColor: Int
     private var innerBoundsColor: Int
     private var textSize: Float
-    private var elementContent : List<String>
+    private var elementContent: List<String>
     private var elementCount: Int
 
     /**
@@ -68,17 +69,14 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      */
     private var selectIndex: Int = 0
         set(value) {
-           // if (field != value) {
 
 
-                val originOffset = field * elementWidth.toInt()
-                val targetOffset = value * elementWidth.toInt()
+            val targetOffset = value * elementWidth.toInt()
 
-                field = value
+            field = value
 
-                scrollingAnimator?.setIntValues(originOffset, targetOffset)
-                scrollingAnimator?.start()
-       //     }
+            scrollingAnimator?.setIntValues(elementOffSet, targetOffset)
+            scrollingAnimator?.start()
         }
 
     /**
@@ -109,7 +107,11 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     /**
      * scrolling animation
      */
-    private var scrollingAnimator: ObjectAnimator ? = null
+    private var scrollingAnimator: ObjectAnimator? = null
+
+    private val flingAnimator: ObjectAnimator by lazy {
+        ObjectAnimator.ofInt(this, "elementOffSet", 0, 0)
+    }
 
     /**
      * view configuration
@@ -118,6 +120,10 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private val pagingSlop = viewConfiguration.scaledPagingTouchSlop
     private val minVelocity = viewConfiguration.scaledMinimumFlingVelocity
     private val maxVelocity = viewConfiguration.scaledMaximumFlingVelocity
+
+    private val velocityTracker: VelocityTracker by lazy {
+        VelocityTracker.obtain()
+    }
 
     /**
      * painting utils
@@ -131,10 +137,14 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     init {
         val typeArray = context.obtainStyledAttributes(attrs, R.styleable.SwitchStateButton)
 
-        outerBoundsColor = typeArray.getColor(R.styleable.SwitchStateButton_ssb_backGroundColor, defaultColor)
-        innerBoundsColor = typeArray.getColor(R.styleable.SwitchStateButton_ssb_innerColor, defaultColor)
-        textSize = typeArray.getDimension(R.styleable.SwitchStateButton_ssb_testSize, defaultTextSize)
-        elementContent = typeArray.getString(R.styleable.SwitchStateButton_ssb_strings).toString().split(",")
+        outerBoundsColor =
+            typeArray.getColor(R.styleable.SwitchStateButton_ssb_backGroundColor, defaultColor)
+        innerBoundsColor =
+            typeArray.getColor(R.styleable.SwitchStateButton_ssb_innerColor, defaultColor)
+        textSize =
+            typeArray.getDimension(R.styleable.SwitchStateButton_ssb_testSize, defaultTextSize)
+        elementContent =
+            typeArray.getString(R.styleable.SwitchStateButton_ssb_strings).toString().split(",")
         selectIndex = typeArray.getInt(R.styleable.SwitchStateButton_ssb_selectIndex, defaultIndex)
         elementCount = elementContent.size
 
@@ -167,8 +177,8 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
 
         elementWidth = maxTextWith + 2 * baseTextGapSpace
 
-        var startOffset = - elementWidth / 2f
-        for (index in elementContent.indices){
+        var startOffset = -elementWidth / 2f
+        for (index in elementContent.indices) {
             startOffset += elementWidth
             textOffsetX[index] = startOffset
         }
@@ -177,7 +187,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         val height = baseTextGapSpace * 2 + textSize
         val width = elementWidth * elementContent.size
 
-        textOffsetY = (height - (fontMetrics.ascent + fontMetrics.descent)) /2
+        textOffsetY = (height - (fontMetrics.ascent + fontMetrics.descent)) / 2
 
         elementOffSet = selectIndex * elementWidth.toInt()
 
@@ -192,7 +202,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
 
         outDrawable.setBounds(0, 0, w, h)
 
-    //    innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), h)
+        //    innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), h)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -207,7 +217,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     /**
      * draw inner drawable and outer drawable
      */
-    private fun drawDrawable(canvas: Canvas){
+    private fun drawDrawable(canvas: Canvas) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             canvas.save()
             canvas.clipOutPath(innerDrawable.path)
@@ -223,15 +233,20 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     /**
      * draw text
      */
-    private fun drawText(canvas: Canvas){
-        for ((index, text) in elementContent.withIndex()){
+    private fun drawText(canvas: Canvas) {
+        for ((index, text) in elementContent.withIndex()) {
             canvas.drawText(text, textOffsetX[index], textOffsetY, textPaint)
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when(event.actionMasked) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            velocityTracker.clear()
+        }
+
+        velocityTracker.addMovement(event)
+        when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x
                 downY = event.y
@@ -242,27 +257,37 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - downX
                 if (isScrolling) {
-                    elementOffSet = (originOffset + dx.toInt()).coerceAtLeast(0).coerceAtMost(elementWidth.toInt() * 2)
+                    elementOffSet = (originOffset + dx.toInt()).coerceAtLeast(0)
+                        .coerceAtMost(elementWidth.toInt() * 2)
                 } else {
-                    if (abs(dx) > pagingSlop) {
+                    if (abs(dx) > pagingSlop && isMotionInBound()) {
                         isScrolling = true
                         originOffset = elementOffSet
+                        parent.requestDisallowInterceptTouchEvent(true)
                     }
                 }
             }
 
             MotionEvent.ACTION_UP -> {
+                if (scrollingAnimator == null) {
+                    initScrollAnimator()
+                }
                 if (isScrolling) {
-
+                    velocityTracker.computeCurrentVelocity(1000, maxVelocity.toFloat())
+                    flingElement(velocityTracker.xVelocity)
                 } else {
-                    if (scrollingAnimator == null) {
-                        initScrollAnimator()
-                    }
                     selectIndex = getIndexByMotion(downX)
                 }
             }
         }
         return true
+    }
+
+    /**
+     * did the motion in bound?
+     */
+    private fun isMotionInBound(): Boolean {
+        return downX >= elementOffSet && downX <= (elementOffSet + elementWidth)
     }
 
     /**
@@ -272,11 +297,19 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         return (eventX / elementWidth).toInt()
     }
 
+    private fun flingElement(velocityX: Float) {
+        val directionRight = velocityX > 0
+        val deltaOffset = elementOffSet - originOffset
+        Log.e("QHC", "fling: ${(deltaOffset / elementWidth).roundToInt()}")
+        selectIndex += (deltaOffset / elementWidth).roundToInt()
+
+    }
+
     /**
      * initial scroll animator
      */
     private fun initScrollAnimator() {
-       scrollingAnimator =  ObjectAnimator.ofInt(this, "elementOffSet", 0, 0)
+        scrollingAnimator = ObjectAnimator.ofInt(this, "elementOffSet", 0, 0).apply { duration = 150 }
     }
 
 
