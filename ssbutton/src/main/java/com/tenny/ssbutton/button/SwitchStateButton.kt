@@ -7,7 +7,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -19,7 +18,6 @@ import com.tenny.ssbutton.utils.dp2px
 import com.tenny.ssbutton.utils.goldDivider
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.round
 import kotlin.math.roundToInt
 
 /**
@@ -297,11 +295,22 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         return (eventX / elementWidth).toInt()
     }
 
+    /**
+     * fling 
+     */
     private fun flingElement(velocityX: Float) {
-        val directionRight = velocityX > 0
+        val directionRight = if(velocityX > 0) 1 else -1
+
         val deltaOffset = elementOffSet - originOffset
-        Log.e("QHC", "fling: ${(deltaOffset / elementWidth).roundToInt()}")
-        selectIndex += (deltaOffset / elementWidth).roundToInt()
+
+        selectIndex += if (abs(velocityX) < minVelocity) {
+            ((deltaOffset / elementWidth).roundToInt() + directionRight).coerceAtLeast(0).coerceAtMost(
+                elementContent.size - 1
+            )
+        } else {
+            (deltaOffset / elementWidth).roundToInt()
+        }
+
 
     }
 
