@@ -11,7 +11,8 @@ import com.tenny.ssbutton.utils.dp2px
  */
 class RoundRectangleDrawable : Drawable(){
 
-    private val defaultStrokeWith = 5.dp2px
+    private val defaultStrokeWith = 2.dp2px
+    private val shadowRadius = 3.dp2px
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         strokeWidth = defaultStrokeWith
@@ -26,6 +27,19 @@ class RoundRectangleDrawable : Drawable(){
         val radius = (bounds.bottom - bounds.top) / 2f
 
         path.addRoundRect(bounds.toRectF(), radius, radius, Path.Direction.CCW)
+    }
+
+    fun needShadow(needShadow: Boolean) {
+        paint.setShadowLayer(shadowRadius, 0f, 0f, Color.GRAY)
+    }
+
+    fun needStroke(stroke: Boolean) {
+
+        paint.style = if (stroke) {
+            Paint.Style.STROKE
+        } else {
+            Paint.Style.FILL
+        }
     }
 
     fun setColor(color: Int){

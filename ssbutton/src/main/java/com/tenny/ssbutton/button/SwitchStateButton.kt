@@ -29,8 +29,6 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      * default value
      */
     private val defaultTextSize = 16.dp2px
-    private val defaultHeight = 42.dp2px.toInt()
-    private val defaultWith = 200.dp2px.toInt()
     private var defaultIndex: Int = 0
     private val defaultColor = "#F9A825".toColorInt()
 
@@ -47,6 +45,8 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      * GapSize
      */
     private val baseTextGapSpace: Int
+    private val outerPadding: Int
+    private val innerPadding: Int
 
     /**
      * measure size
@@ -58,7 +58,9 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     /**
      * drawable element
      */
-    private val outDrawable = RoundRectangleDrawable()
+    private val outDrawable = RoundRectangleDrawable().apply {
+        needShadow(true)
+    }
     private val innerDrawable = RoundRectangleDrawable()
 
 
@@ -149,6 +151,8 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         typeArray.recycle()
 
         baseTextGapSpace = (textSize / goldDivider).toInt()
+        outerPadding = baseTextGapSpace / 10
+        innerPadding = (outerPadding * 2.2).toInt()
         textPaint.textSize = textSize
         outDrawable.setColor(outerBoundsColor)
         innerDrawable.setColor(innerBoundsColor)
@@ -198,7 +202,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        outDrawable.setBounds(0, 0, w, h)
+        outDrawable.setBounds(outerPadding, outerPadding, w - outerPadding, h - outerPadding)
 
         //    innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), h)
     }
@@ -206,7 +210,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), height)
+        innerDrawable.setBounds(elementOffSet + innerPadding, innerPadding, elementOffSet + elementWidth.toInt() - innerPadding, height - innerPadding)
 
         drawDrawable(canvas)
         drawText(canvas)
@@ -296,7 +300,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     }
 
     /**
-     * fling 
+     * fling
      */
     private fun flingElement(velocityX: Float) {
         val directionRight = if(velocityX > 0) 1 else -1
