@@ -1,5 +1,9 @@
 package com.tenny.ssbutton.button
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
@@ -58,13 +62,23 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private val outDrawable = RoundRectangleDrawable()
     private val innerDrawable = RoundRectangleDrawable()
 
+
     /**
      * select index
      */
     private var selectIndex: Int = 0
         set(value) {
-            field = value
-            invalidate()
+            if (field != value) {
+
+
+                val originOffset = field * elementWidth.toInt()
+                val targetOffset = value * elementWidth.toInt()
+
+                field = value
+
+                scrollingAnimator.setIntValues(originOffset, targetOffset)
+                scrollingAnimator.start()
+            }
         }
 
     /**
@@ -77,6 +91,17 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      * scrolling
      */
     private var isScrolling: Boolean = false
+
+    private var elementOffSet: Int = 0
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /**
+     * scrolling animation
+     */
+    private val scrollingAnimator =  ObjectAnimator.ofInt(this, "elementOffSet", 0, 0)
 
     /**
      * view configuration
@@ -162,8 +187,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        outDrawable.setBounds(0, 0, width, height)
-        innerDrawable.setBounds(elementWidth.toInt() * selectIndex, 0, elementWidth.toInt() * (selectIndex + 1), height)
+        innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), height)
 
         drawDrawable(canvas)
         drawText(canvas)
@@ -205,8 +229,10 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (!isScrolling) {
-                    val dx = event.x - downX
+                val dx = event.x - downX
+                if (isScrolling) {
+
+                } else {
                     if (abs(dx) > pagingSlop) {
                         isScrolling = true
                     }
@@ -217,14 +243,17 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
                 if (isScrolling) {
 
                 } else {
-                    selectIndex = getIndex(downX)
+                    selectIndex = getIndexByMotion(downX)
                 }
             }
         }
         return true
     }
 
-    private fun getIndex(eventX: Float): Int {
+    /**
+     * get target index by motion
+     */
+    private fun getIndexByMotion(eventX: Float): Int {
         return (eventX / elementWidth).toInt()
     }
 
