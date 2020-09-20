@@ -68,7 +68,7 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      */
     private var selectIndex: Int = 0
         set(value) {
-            if (field != value) {
+           // if (field != value) {
 
 
                 val originOffset = field * elementWidth.toInt()
@@ -76,9 +76,9 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
 
                 field = value
 
-                scrollingAnimator.setIntValues(originOffset, targetOffset)
-                scrollingAnimator.start()
-            }
+                scrollingAnimator?.setIntValues(originOffset, targetOffset)
+                scrollingAnimator?.start()
+       //     }
         }
 
     /**
@@ -92,6 +92,9 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
      */
     private var isScrolling: Boolean = false
 
+    /**
+     * real element offset
+     */
     private var elementOffSet: Int = 0
         set(value) {
             field = value
@@ -99,9 +102,14 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         }
 
     /**
+     * record the element's origin offset
+     */
+    private var originOffset: Int = 0
+
+    /**
      * scrolling animation
      */
-    private val scrollingAnimator =  ObjectAnimator.ofInt(this, "elementOffSet", 0, 0)
+    private var scrollingAnimator: ObjectAnimator ? = null
 
     /**
      * view configuration
@@ -171,6 +179,8 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
 
         textOffsetY = (height - (fontMetrics.ascent + fontMetrics.descent)) /2
 
+        elementOffSet = selectIndex * elementWidth.toInt()
+
         setMeasuredDimension(width.toInt(), height.toInt())
     }
 
@@ -181,7 +191,8 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
         super.onSizeChanged(w, h, oldw, oldh)
 
         outDrawable.setBounds(0, 0, w, h)
-        innerDrawable.setBounds(elementWidth.toInt() * selectIndex, 0, elementWidth.toInt() * (selectIndex + 1), h)
+
+    //    innerDrawable.setBounds(elementOffSet, 0, elementOffSet + elementWidth.toInt(), h)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -231,10 +242,11 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - downX
                 if (isScrolling) {
-
+                    elementOffSet = (originOffset + dx.toInt()).coerceAtLeast(0).coerceAtMost(elementWidth.toInt() * 2)
                 } else {
                     if (abs(dx) > pagingSlop) {
                         isScrolling = true
+                        originOffset = elementOffSet
                     }
                 }
             }
@@ -243,6 +255,9 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
                 if (isScrolling) {
 
                 } else {
+                    if (scrollingAnimator == null) {
+                        initScrollAnimator()
+                    }
                     selectIndex = getIndexByMotion(downX)
                 }
             }
@@ -256,5 +271,13 @@ class SwitchStateButton(context: Context, attrs: AttributeSet) : View(context, a
     private fun getIndexByMotion(eventX: Float): Int {
         return (eventX / elementWidth).toInt()
     }
+
+    /**
+     * initial scroll animator
+     */
+    private fun initScrollAnimator() {
+       scrollingAnimator =  ObjectAnimator.ofInt(this, "elementOffSet", 0, 0)
+    }
+
 
 }

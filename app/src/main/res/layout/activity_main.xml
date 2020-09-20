@@ -16,7 +16,7 @@
         app:ssb_strings="龙井茶,普洱茶,铁观音"
         app:ssb_backGroundColor="@color/red_700"
         app:ssb_testSize="15dp"
-        app:ssb_selectIndex="0"
+        app:ssb_selectIndex="2"
         app:ssb_innerColor="@color/yellow_500"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
